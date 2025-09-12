@@ -5,6 +5,8 @@ public class MonsterAuthoring : MonoBehaviour
 {
     public float hp = 100;
     public float moveSpeed = 1;
+    public float createBulletInterval = 1;//创建子弹的间隔时间
+    public GameObject bulletPrefab;
     //烘培器(将MonoMonoBehaviour对象烘培到ECS中)
     public class MonsterBaker : Baker<MonsterAuthoring>
     {
@@ -16,6 +18,11 @@ public class MonsterAuthoring : MonoBehaviour
             AddComponent<MonsterData>(monsterEntity, new MonsterData()
             {
                 hp = authoring.hp,
+                bulletPrototype = GetEntity(authoring.bulletPrefab, TransformUsageFlags.Dynamic),//获取Mono子弹预制体对应的ECS实体
+                createBulletInterval = authoring.createBulletInterval,
+            });
+            AddComponent<MoveData>(monsterEntity, new MoveData()
+            {
                 moveSpeed = authoring.moveSpeed
             });
         }
