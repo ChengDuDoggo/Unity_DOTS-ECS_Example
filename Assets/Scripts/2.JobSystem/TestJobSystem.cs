@@ -1,4 +1,5 @@
 ﻿using System.Threading;
+using Unity.Collections;
 using Unity.Jobs;
 using UnityEngine;
 
@@ -6,6 +7,10 @@ using UnityEngine;
 //不适用于长的多线程任务,例如对于一个网络连接多线程,常常需要整个游戏生命周期去执行监听的多线程任务,不适用于JobSystem
 public class TestJobSystem : MonoBehaviour
 {
+    private MyJobFor myJobFor;
+    //打破常识:在Unity.Collections库中的值类型数据结构,相当于指针操作器,虽然它们都是值类型,但是在被传递给其他函数中并被改变后
+    //它们自己的值也会被改变,并没有像传统值类型是纯赋值传递,传递后的值于自己再无关联
+    private NativeArray<int> nums;
     private void Start()
     {
         //Thread.CurrentThread.ManagedThreadId:输出当前线程ID
@@ -15,6 +20,21 @@ public class TestJobSystem : MonoBehaviour
         myJob.Run();
         //Schedule():在工作线程中执行(异步)
         myJob.Schedule();
+
+        nums = new NativeArray<int>(100, Allocator.Persistent);
+        myJobFor = new() { nums = nums };
+        //myJobFor.Run(100);//在主线程中执行100次
+        //myJobFor.Schedule(100, default);//在同一个工作线程中执行100次
+        myJobFor.ScheduleParallel(100, 10, default);//每10个任务为1组,每组为1个工作线程,并行执行10组任务
+        Invoke(nameof(Test), 3);
+    }
+    private void Test()
+    {
+        for (int i = 0; i < nums.Length; i++)
+        {
+            Debug.Log(nums[i]);
+        }
+        nums.Dispose();//在Job执行完后释放内存,如果Job还没执行完就释放内存会报错
     }
 }
 //IJob:普通的单任务
@@ -24,5 +44,15 @@ public struct MyJob : IJob
     public readonly void Execute()
     {
         Debug.Log("myJob线程:" + Thread.CurrentThread.ManagedThreadId);
+    }
+}
+//IJobFor:循环处理多个任务
+public struct MyJobFor : IJobFor
+{
+    public NativeArray<int> nums;
+    public void Execute(int index)
+    {
+        nums[index] = index;
+        Debug.Log("myJobFor线程:" + Thread.CurrentThread.ManagedThreadId + "-index:" + index);
     }
 }
