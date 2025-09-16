@@ -1,6 +1,8 @@
-﻿using Unity.Entities;
+﻿using System.Threading;
+using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
+using UnityEngine;
 
 //动态缓冲区数据组件(可以理解为Mono中的List)
 //要作为数据组件单独创建
@@ -72,17 +74,58 @@ public partial struct MonsterSystem : ISystem
         //    monsterData.ValueRW.hp -= SystemAPI.Time.DeltaTime;//掉血
         //}
         //使用封装数据组件的方式筛选遍历
-        foreach (MonsterAspect monster in SystemAPI.Query<MonsterAspect>())
+        //foreach (MonsterAspect monster in SystemAPI.Query<MonsterAspect>())
+        //{
+        //monster.monsterData.ValueRW.hp -= SystemAPI.Time.DeltaTime;//掉血
+        //monster.monsterData.ValueRW.createBulletTimer -= SystemAPI.Time.DeltaTime;//计时
+        //if (monster.monsterData.ValueRO.createBulletTimer <= 0)//可以创建子弹
+        //{
+        //    monster.monsterData.ValueRW.createBulletTimer = monster.monsterSharedConfigData.createBulletInterval;//重置计时器
+        //    Entity bullet = state.EntityManager.Instantiate(gameManagerData.bulletPrototype);//创建子弹实体
+        //    state.EntityManager.SetComponentData(bullet, new LocalTransform()//设置子弹实体的LocalTransform数据组件的数据
+        //    {
+        //        Position = monster.localTransform.ValueRO.Position,//设置子弹位置为怪物位置
+        //        Scale = 0.5f//设置子弹大小缩放
+        //    });
+        //}
+        //}
+
+        //命令缓存区(ECB)
+        //因为在IJobEntity中不能直接操作EntityManager,所以在IJobEntity中我们不能直接执行创建实体、销毁实体、添加数据组件、移除数据组件等操作
+        //此时我们就需要使用命令缓存区(EntityCommandBuffer)来缓存这些操作命令,等Job执行完毕后再统一执行这些操作
+
+        //方式一:传统方式创建ECB(自己New)
+        //EntityCommandBuffer ecb = new(Allocator.TempJob);
+
+        //方式二:通过系统单例获得ECB(推荐)
+        EntityCommandBuffer ecb = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
+
+        //使用多线程Job方式,处理拥有MonsterAspect数据组件的实体
+        //IJobEntity会根据Execute函数的参数自动筛选拥有这些数据组件的实体
+        new MonsterJob() { ecb = ecb, gameManagerData = gameManagerData, deltaTime = SystemAPI.Time.DeltaTime }.Schedule();
+        //直接单例获得系统的ECB无需任何操作
+        //传统ECB方式需要执行以下操作
+        //state.Dependency.Complete();//确保Job执行完毕
+        //ecb.Playback(state.EntityManager);//执行命令缓存区中的命令
+        //ecb.Dispose();//释放命令缓存区
+    }
+    public partial struct MonsterJob : IJobEntity
+    {
+        public EntityCommandBuffer ecb;
+        public GameManagerData gameManagerData;
+        public float deltaTime;
+        //Execute函数的参数会自动筛选拥有这些数据组件的实体(MonsterAspect和Entity)
+        public readonly void Execute(MonsterAspect monsterAspect)
         {
-            monster.monsterData.ValueRW.hp -= SystemAPI.Time.DeltaTime;//掉血
-            monster.monsterData.ValueRW.createBulletTimer -= SystemAPI.Time.DeltaTime;//计时
-            if (monster.monsterData.ValueRO.createBulletTimer <= 0)//可以创建子弹
+            monsterAspect.monsterData.ValueRW.hp -= deltaTime;//掉血
+            monsterAspect.monsterData.ValueRW.createBulletTimer -= deltaTime;//计时
+            if (monsterAspect.monsterData.ValueRO.createBulletTimer <= 0)//可以创建子弹
             {
-                monster.monsterData.ValueRW.createBulletTimer = monster.monsterSharedConfigData.createBulletInterval;//重置计时器
-                Entity bullet = state.EntityManager.Instantiate(gameManagerData.bulletPrototype);//创建子弹实体
-                state.EntityManager.SetComponentData(bullet, new LocalTransform()//设置子弹实体的LocalTransform数据组件的数据
+                monsterAspect.monsterData.ValueRW.createBulletTimer = monsterAspect.monsterSharedConfigData.createBulletInterval;//重置计时器
+                Entity bullet = ecb.Instantiate(gameManagerData.bulletPrototype);//创建子弹实体
+                ecb.SetComponent(bullet, new LocalTransform()//设置子弹实体的LocalTransform数据组件的数据
                 {
-                    Position = monster.localTransform.ValueRO.Position,//设置子弹位置为怪物位置
+                    Position = monsterAspect.localTransform.ValueRO.Position,//设置子弹位置为怪物位置
                     Scale = 0.5f//设置子弹大小缩放
                 });
             }
@@ -97,10 +140,25 @@ public partial struct MoveSystem : ISystem
 {
     public readonly void OnUpdate(ref SystemState state)
     {
+        //常规SystemAPI.Query方式,循环遍历寻找拥有MoveAspect数据组件的实体
         float3 dir = new(0, 0, 1);
-        foreach (MoveAspect monster in SystemAPI.Query<MoveAspect>())
+        //foreach (MoveAspect monster in SystemAPI.Query<MoveAspect>())
+        //{
+        //    monster.localTransform.ValueRW.Position += monster.moveData.ValueRW.moveSpeed * SystemAPI.Time.DeltaTime * dir;//移动
+        //}
+        //使用多线程Job方式,并行处理拥有MoveAspect数据组件的实体
+        //IJobEntity会根据Execute函数的参数自动筛选拥有这些数据组件的实体
+        new MoveJob() { deltaTime = SystemAPI.Time.DeltaTime, dir = dir }.ScheduleParallel();
+    }
+    public partial struct MoveJob : IJobEntity
+    {
+        public float deltaTime;
+        public float3 dir;
+        //Execute函数的参数会自动筛选拥有这些数据组件的实体(MoveAspect和Entity)
+        public readonly void Execute(MoveAspect moveAspect, Entity entity)
         {
-            monster.localTransform.ValueRW.Position += monster.moveData.ValueRW.moveSpeed * SystemAPI.Time.DeltaTime * dir;//移动
+            moveAspect.localTransform.ValueRW.Position += moveAspect.moveData.ValueRW.moveSpeed * deltaTime * dir;//移动
+            Debug.Log("MoveJob线程:" + Thread.CurrentThread.ManagedThreadId + "||Entity:" + entity);
         }
     }
 }
