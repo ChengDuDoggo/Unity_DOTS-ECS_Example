@@ -1,4 +1,6 @@
 ﻿using System.Threading;
+using Unity.Burst;
+using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
@@ -102,21 +104,32 @@ public partial struct MonsterSystem : ISystem
 
         //使用多线程Job方式,处理拥有MonsterAspect数据组件的实体
         //IJobEntity会根据Execute函数的参数自动筛选拥有这些数据组件的实体
-        new MonsterJob() { ecb = ecb, gameManagerData = gameManagerData, deltaTime = SystemAPI.Time.DeltaTime }.Schedule();
+        new MonsterJob() { name = "Jackey", ecb = ecb, gameManagerData = gameManagerData, deltaTime = SystemAPI.Time.DeltaTime }.Schedule();
         //直接单例获得系统的ECB无需任何操作
         //传统ECB方式需要执行以下操作
         //state.Dependency.Complete();//确保Job执行完毕
         //ecb.Playback(state.EntityManager);//执行命令缓存区中的命令
         //ecb.Dispose();//释放命令缓存区
     }
+
+    //Burst编译器:将C#代码转换为高性能的本地机器码,提高代码执行效率(需要安装Burst包)
+    //设计上主要配合JobSystem使用
+    //1.不允许在代码中使用任何托管对象(引用类型)(C#中的类)
+    //2.字符串也是引用类型,只能使用工具类FixedStringN(其中N为长度,最大支持到4096)来实现字符串功能
+    //3.静态方面只支持静态只读字段,但是可以使用SharedStatic
+    [BurstCompile]
     public partial struct MonsterJob : IJobEntity
     {
+        //public string name;//字符串是引用类型,不能使用,Burst会报错
+        public FixedString64Bytes name;//使用FixedStringN来实现字符串功能
         public EntityCommandBuffer ecb;
         public GameManagerData gameManagerData;
         public float deltaTime;
         //Execute函数的参数会自动筛选拥有这些数据组件的实体(MonsterAspect和Entity)
         public readonly void Execute(MonsterAspect monsterAspect)
         {
+            FixedString64Bytes runes = $"{name}Monster";
+            TestJobSystem.sharedStaticFloat.Data = 3.0f;
             monsterAspect.monsterData.ValueRW.hp -= deltaTime;//掉血
             monsterAspect.monsterData.ValueRW.createBulletTimer -= deltaTime;//计时
             if (monsterAspect.monsterData.ValueRO.createBulletTimer <= 0)//可以创建子弹
@@ -150,6 +163,7 @@ public partial struct MoveSystem : ISystem
         //IJobEntity会根据Execute函数的参数自动筛选拥有这些数据组件的实体
         new MoveJob() { deltaTime = SystemAPI.Time.DeltaTime, dir = dir }.ScheduleParallel();
     }
+    [BurstCompile]
     public partial struct MoveJob : IJobEntity
     {
         public float deltaTime;
@@ -158,7 +172,9 @@ public partial struct MoveSystem : ISystem
         public readonly void Execute(MoveAspect moveAspect, Entity entity)
         {
             moveAspect.localTransform.ValueRW.Position += moveAspect.moveData.ValueRW.moveSpeed * deltaTime * dir;//移动
-            Debug.Log("MoveJob线程:" + Thread.CurrentThread.ManagedThreadId + "||Entity:" + entity);
+            //此行会在Burst编译时报错,因为Thread.CurrentThread.ManagedThreadId和entity是引用托管类型
+            //而单纯的Debug.Log不会报错,但是会有性能损失,因为Debug.Log会进行装箱拆箱操作
+            //Debug.Log("MoveJob线程:" + Thread.CurrentThread.ManagedThreadId + "||Entity:" + entity);
         }
     }
 }

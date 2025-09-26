@@ -1,4 +1,5 @@
 ﻿using System.Threading;
+using Unity.Burst;
 using Unity.Collections;
 using Unity.Jobs;
 using UnityEngine;
@@ -7,6 +8,10 @@ using UnityEngine;
 //不适用于长的多线程任务,例如对于一个网络连接多线程,常常需要整个游戏生命周期去执行监听的多线程任务,不适用于JobSystem
 public class TestJobSystem : MonoBehaviour
 {
+    //SharedStatic<T>:共享静态变量(类似于Mono中的静态变量static),T只能是值类型,不能是引用类型
+    //用于在Job与Mono之间传递数据
+    public readonly static SharedStatic<float> sharedStaticFloat = SharedStatic<float>.GetOrCreate<TestJobSystem>();//GetOrCreate<T>,T是Key
+
     private MyJobFor myJobFor;
     //打破常识:在Unity.Collections库中的值类型数据结构,相当于指针操作器,虽然它们都是值类型,但是在被传递给其他函数中并被改变后
     //它们自己的值也会被改变,并没有像传统值类型是纯赋值传递,传递后的值于自己再无关联
@@ -14,6 +19,8 @@ public class TestJobSystem : MonoBehaviour
     private JobHandle jobHandle;
     private void Start()
     {
+        sharedStaticFloat.Data = 0.0f;
+
         //Thread.CurrentThread.ManagedThreadId:输出当前线程ID
         Debug.Log("主线程:" + Thread.CurrentThread.ManagedThreadId);
         MyJob myJob = new();
