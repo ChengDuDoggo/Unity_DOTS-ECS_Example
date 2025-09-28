@@ -1,10 +1,8 @@
-﻿using System.Threading;
-using Unity.Burst;
+﻿using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
-using UnityEngine;
 
 //动态缓冲区数据组件(可以理解为Mono中的List)
 //要作为数据组件单独创建
