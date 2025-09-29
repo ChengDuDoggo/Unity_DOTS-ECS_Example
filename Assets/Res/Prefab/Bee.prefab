@@ -11,6 +11,7 @@ GameObject:
   - component: {fileID: 6546626728737257293}
   - component: {fileID: 7227794586671606696}
   - component: {fileID: 6380803699646898987}
+  - component: {fileID: 835937744859033182}
   m_Layer: 0
   m_Name: Bee
   m_TagString: Untagged
@@ -83,3 +84,17 @@ MeshRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_AdditionalVertexStreams: {fileID: 0}
+--- !u!114 &835937744859033182
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2799040915836442648}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 445f80dcff82bf740b6483c020e9eb8b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  frameRate: 10
+  frameMaxIndex: 7
