@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using Unity.Entities;
+using UnityEngine;
 
 public enum PlayerState
 {
@@ -15,6 +16,7 @@ public class PlayerController : MonoBehaviour
     public float AttackCD { get => Mathf.Clamp(1f / lv * 1.5f, 0.1f, 1f); }
     public float spawnMonsterIntervalMultiply = 1f;
     public float spawnMonsterQuantityMultiply = 1f;
+    private float attackCDTimer;
     public int lv = 1;
     public int BulletQuantity { get => lv; }
     public int LV
@@ -57,6 +59,7 @@ public class PlayerController : MonoBehaviour
     }
     private void Update()
     {
+        CheckAttack();
         float h = Input.GetAxis("Horizontal");
         float v = Input.GetAxis("Vertical");
         switch (playerState)
@@ -86,11 +89,47 @@ public class PlayerController : MonoBehaviour
         Vector3 pos = transform.position;
         pos.x = Mathf.Clamp(pos.x, moveRangeX.x, moveRangeX.y);
         pos.y = Mathf.Clamp(pos.y, moveRangeY.x, moveRangeY.y);
-        pos.z = 0;
+        pos.z = pos.y;
         transform.position = pos;
     }
     public void PlayAnimation(string animationName)
     {
         animator.CrossFadeInFixedTime(animationName, 0.0f);
+    }
+    private void CheckAttack()
+    {
+        Vector3 mousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+        gunRoot.up = (Vector2)mousePos - (Vector2)transform.position;
+        attackCDTimer -= Time.deltaTime;
+        if (attackCDTimer <= 0 && Input.GetMouseButton(0))
+        {
+            Attack();
+            attackCDTimer = AttackCD;
+        }
+    }
+    private void Attack()
+    {
+        AudioManager.Instance.PlayShootAudio();
+        //生成子弹信息
+        DynamicBuffer<BulletInfo> buffer = World.DefaultGameObjectInjectionWorld.EntityManager.GetBuffer<BulletInfo>(SharedData.singtonEntity.Data);
+        buffer.Add(new BulletInfo()
+        {
+            position = gunRoot.position,
+            rotation = gunRoot.rotation
+        });
+        float angleStep = Mathf.Clamp(360 / BulletQuantity, 0, 5.0f);
+        for(int i = 1; i < BulletQuantity / 2; i++)
+        {
+            buffer.Add(new BulletInfo()
+            {
+                position = gunRoot.position,
+                rotation = gunRoot.rotation * Quaternion.Euler(0, 0, angleStep * i)
+            });
+            buffer.Add(new BulletInfo()
+            {
+                position = gunRoot.position,
+                rotation = gunRoot.rotation * Quaternion.Euler(0, 0, -angleStep * i)
+            });
+        }
     }
 }

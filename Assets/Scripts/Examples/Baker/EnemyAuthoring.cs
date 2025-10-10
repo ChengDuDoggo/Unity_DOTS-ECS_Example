@@ -9,7 +9,9 @@ public class EnemyAuthoring : MonoBehaviour
     {
         public override void Bake(EnemyAuthoring authoring)
         {
-
+            Entity entity = GetEntity(TransformUsageFlags.Dynamic);
+            AddComponent<RendererSortTag>(entity);
+            SetComponentEnabled<RendererSortTag>(entity, true);
         }
     }
 }
