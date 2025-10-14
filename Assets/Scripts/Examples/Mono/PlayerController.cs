@@ -111,8 +111,8 @@ public class PlayerController : MonoBehaviour
     {
         AudioManager.Instance.PlayShootAudio();
         //生成子弹信息
-        DynamicBuffer<BulletInfo> buffer = World.DefaultGameObjectInjectionWorld.EntityManager.GetBuffer<BulletInfo>(SharedData.singtonEntity.Data);
-        buffer.Add(new BulletInfo()
+        DynamicBuffer<BulletCreateInfo> buffer = World.DefaultGameObjectInjectionWorld.EntityManager.GetBuffer<BulletCreateInfo>(SharedData.singtonEntity.Data);
+        buffer.Add(new BulletCreateInfo()
         {
             position = gunRoot.position,
             rotation = gunRoot.rotation
@@ -120,12 +120,12 @@ public class PlayerController : MonoBehaviour
         float angleStep = Mathf.Clamp(360 / BulletQuantity, 0, 5.0f);
         for(int i = 1; i < BulletQuantity / 2; i++)
         {
-            buffer.Add(new BulletInfo()
+            buffer.Add(new BulletCreateInfo()
             {
                 position = gunRoot.position,
                 rotation = gunRoot.rotation * Quaternion.Euler(0, 0, angleStep * i)
             });
-            buffer.Add(new BulletInfo()
+            buffer.Add(new BulletCreateInfo()
             {
                 position = gunRoot.position,
                 rotation = gunRoot.rotation * Quaternion.Euler(0, 0, -angleStep * i)
