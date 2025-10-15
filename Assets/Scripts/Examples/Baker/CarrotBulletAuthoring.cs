@@ -11,11 +11,12 @@ public class CarrotBulletAuthoring : MonoBehaviour
         {
             Entity entity = GetEntity(TransformUsageFlags.Dynamic);
             AddComponent<RendererSortTag>(entity);
+            SetComponentEnabled<RendererSortTag>(entity, true);
             AddComponent<BulletData>(entity,new BulletData()
             {
                 destroyTime = authoring.destroyTime
             });
-            SetComponentEnabled<RendererSortTag>(entity, true);
+            SetComponentEnabled<BulletData>(entity, true);
             AddSharedComponent<BulletSharedInfo>(entity, new BulletSharedInfo
             {
                 moveSpeed = authoring.moveSpeed,

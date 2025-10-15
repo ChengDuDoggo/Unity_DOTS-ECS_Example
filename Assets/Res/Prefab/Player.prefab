@@ -275,4 +275,4 @@ MonoBehaviour:
   moveSpeed: 2.5
   spawnMonsterIntervalMultiply: 1
   spawnMonsterQuantityMultiply: 1
-  lv: 1
+  lv: 10
