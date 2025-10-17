@@ -30,7 +30,7 @@ public partial struct BulletSystem : ISystem
         if (createBulletCount.Data > 0)
         {
             NativeArray<Entity> newBullets = new(createBulletCount.Data, Allocator.Temp);
-            state.EntityManager.Instantiate(SystemAPI.GetSingleton<GameConfigData>().bulletPortotype, newBullets);
+            ecb.Instantiate(int.MinValue, SystemAPI.GetSingleton<GameConfigData>().bulletPortotype, newBullets);
             for (int i = 0; i < newBullets.Length; i++)
             {
                 BulletCreateInfo info = bulletCreateInfoBuffer[i];

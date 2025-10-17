@@ -22,7 +22,13 @@ public class PlayerController : MonoBehaviour
     public int LV
     {
         get => lv;
-        set => lv = value;
+        set
+        {
+            lv = value;
+            //因为等级导致的初始化数据
+            SharedData.spawnEnemySharedData.Data.spawnInterval = 10f / lv * spawnMonsterIntervalMultiply;
+            SharedData.spawnEnemySharedData.Data.spawnCount = (int)(lv * 5 * spawnMonsterQuantityMultiply);
+        }
     }
     private PlayerState playerState;
     private PlayerState PlayerState
@@ -52,6 +58,7 @@ public class PlayerController : MonoBehaviour
     private void Awake()
     {
         LV = lv;
+        CheckPositionRange();
     }
     private void Start()
     {
@@ -91,6 +98,7 @@ public class PlayerController : MonoBehaviour
         pos.y = Mathf.Clamp(pos.y, moveRangeY.x, moveRangeY.y);
         pos.z = pos.y;
         transform.position = pos;
+        SharedData.playerPos.Data = (Vector2)transform.position;
     }
     public void PlayAnimation(string animationName)
     {
